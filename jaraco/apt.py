@@ -5,6 +5,7 @@ import shlex
 import subprocess
 import logging
 import contextlib
+import itertools
 
 import yg.lockfile
 
@@ -81,15 +82,23 @@ def dependency_context(package_names, aggressively_remove=False):
             lock.release()
 
 
-def run():
+def _parse_args():
     """
-    Run a command in the context of the system dependencies.
+    >>> mp = getfixture('monkeypatch')
+    >>> mp.setattr('sys.argv', ['foo.py', "python -c pass"])
+    >>> ns = _parse_args()
+    >>> ns.command
+    ['python', '-c', 'pass']
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--deps-def',
-        default=data_lines_from_file("system deps.txt")
-        + data_lines_from_file("build deps.txt"),
+        default=list(
+            itertools.chain(
+                data_lines_from_file("system deps.txt"),
+                data_lines_from_file("build deps.txt"),
+            )
+        ),
         help="A file specifying the dependencies (one per line)",
         type=data_lines_from_file,
         dest="spec_deps",
@@ -127,7 +136,14 @@ def run():
         type=log_level,
         help="Set log level (DEBUG, INFO, WARNING, ERROR)",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def run():
+    """
+    Run a command in the context of the system dependencies.
+    """
+    args = _parse_args()
     logging.basicConfig(level=args.log_level)
     context = dependency_context(
         args.spec_deps + args.deps, aggressively_remove=args.aggressively_remove
