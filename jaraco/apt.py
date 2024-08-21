@@ -7,7 +7,7 @@ import logging
 import contextlib
 import itertools
 
-import yg.lockfile
+import yg.lockfile  # type: ignore[import-untyped]
 
 
 class PackageName(str):
